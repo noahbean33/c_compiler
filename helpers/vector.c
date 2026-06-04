@@ -74,6 +74,10 @@ struct vector *vector_create(size_t esize)
     return vec;
 }
 
+/* BUG: Memory leak - the 'saves' sub-vector (created in vector_create) is never freed.
+ * Each vector_create allocates a saves vector, but vector_free only frees data and the vector itself.
+ * FIX: Add "if (vector->saves) { free(vector->saves->data); free(vector->saves); }" before freeing the vector.
+ */
 void vector_free(struct vector *vector)
 {
     free(vector->data);
@@ -258,6 +262,11 @@ void vector_push(struct vector *vector, void *elem)
     }
 }
 
+/* BUG: The 'amount' parameter is never used. The function always reads 1 byte at a time
+ * until EOF regardless of the requested amount. Also reads into vector->data directly
+ * (potentially corrupting existing vector contents) instead of a temporary buffer.
+ * FIX: Use 'amount' to limit reads, and read into a local buffer variable instead of vector->data.
+ */
 int vector_fread(struct vector *vector, int amount, FILE *fp)
 {
     size_t read_amount = fread(vector->data, 1, 1, fp);
@@ -316,6 +325,11 @@ void vector_stretch(struct vector *vector, int index)
     vector->rindex = index;
 }
 
+/* BUG: Function is declared to return int but has no return statement.
+ * The caller receives an undefined value. Should return the index where the
+ * element was found and removed, or -1 if not found.
+ * FIX: Add "return index;" after the while loop (when found), or "return -1;" at the end (when not found).
+ */
 int vector_pop_value(struct vector* vector, void* val)
 {
     int old_pp = vector->pindex;

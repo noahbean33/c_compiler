@@ -29,6 +29,11 @@ struct stack_frame_element* stackframe_back(struct node* func_node)
 struct stack_frame_element* stackframe_back_expect(struct node* func_node, int expecting_type, const char* expecting_name)
 {
     struct stack_frame_element* element = stackframe_back(func_node);
+    /* BUG: Operator precedence issue. && binds tighter than ||, so this is parsed as:
+     *   (element && element->type != expecting_type) || (!S_EQ(element->name, expecting_name))
+     * If element is NULL, the second condition still evaluates, dereferencing element->name (NULL dereference).
+     * FIX: Add parentheses: if (element && (element->type != expecting_type || !S_EQ(element->name, expecting_name)))
+     */
     if (element && element->type != expecting_type || !S_EQ(element->name, expecting_name))
     {
         return NULL;

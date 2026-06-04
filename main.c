@@ -65,6 +65,11 @@ int main(int argc, char** argv)
     /* Assemble and link the generated assembly output using NASM and GCC */
     if (compile_flags & COMPILE_PROCESS_EXECUTE_NASM)
     {
+        /* BUG: Potential buffer overflow. nasm_output_file is only 40 bytes but output_file
+         * could be up to PATH_MAX characters from argv[2], easily exceeding the buffer.
+         * FIX: Use snprintf(nasm_output_file, sizeof(nasm_output_file), "%s.o", output_file)
+         * or increase the buffer size to PATH_MAX + 3.
+         */
         char nasm_output_file[40];
         char nasm_cmd[512];
         sprintf(nasm_output_file, "%s.o", output_file);

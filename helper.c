@@ -112,6 +112,11 @@ int padding(int val, int to)
         return 0;
     }
 
+    /* BUG: Redundant modulo operation. The expression (val % to) % to is always equal
+     * to (val % to) because (val % to) is already in the range [0, to-1].
+     * The outer % to has no effect. This produces correct results by coincidence.
+     * FIX: Simplify to: return to - (val % to);
+     */
     return to - (val % to) % to;
 }
 

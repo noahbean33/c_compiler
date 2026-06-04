@@ -480,6 +480,10 @@ bool preprocessor_is_preprocessor_keyword(const char *value)
            S_EQ(value, "warning") ||
            S_EQ(value, "error") ||
            S_EQ(value, "if") ||
+           /* BUG: Typo - "eleif" should be "elif". This means #elif directives will not
+            * be recognized as preprocessor keywords, causing them to be treated as identifiers.
+            * FIX: Change "eleif" to "elif"
+            */
            S_EQ(value, "eleif") ||
            S_EQ(value, "ifdef") ||
            S_EQ(value, "ifndef") ||
@@ -489,6 +493,11 @@ bool preprocessor_is_preprocessor_keyword(const char *value)
 }
 bool preprocessor_token_is_preprocessor_keyword(struct token *token)
 {
+    /* BUG: Operator precedence issue. && binds tighter than ||, so this is parsed as:
+     *   (token->type == TOKEN_TYPE_IDENTIFIER) || (token->type == TOKEN_TYPE_KEYWORD && preprocessor_is_preprocessor_keyword(token->sval))
+     * This means ANY identifier token will return true, not just preprocessor keywords.
+     * FIX: Should be: return (token->type == TOKEN_TYPE_IDENTIFIER || token->type == TOKEN_TYPE_KEYWORD) && preprocessor_is_preprocessor_keyword(token->sval);
+     */
     return token->type == TOKEN_TYPE_IDENTIFIER || token->type == TOKEN_TYPE_KEYWORD && preprocessor_is_preprocessor_keyword(token->sval);
 }
 bool preprocessor_token_is_define(struct token *token)

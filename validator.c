@@ -242,6 +242,12 @@ int validate(struct compile_process* process)
 {
     int res = 0;
     validate_initialize(process);
+    /* BUG: validate_tree() is defined with no parameters (line 228) but is called here
+     * with 'process' as an argument. In C, calling a function with extra arguments is
+     * undefined behavior. The extra argument is silently ignored on most x86 calling
+     * conventions but is still technically incorrect.
+     * FIX: Change to: res = validate_tree();
+     */
     res = validate_tree(process);
     validate_destruct(process);
     return res;

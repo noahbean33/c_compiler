@@ -622,6 +622,13 @@ struct resolver_entity *resolver_follow_for_name(struct resolver_process *resolv
         result->identifier = entity;
     }
 
+    /* BUG: Operator precedence issue. && binds tighter than ||, so this is parsed as:
+     *   (entity->type == RESOLVER_ENTITY_TYPE_VARIABLE && datatype_is_struct_or_union(...)) || (...)
+     * The first part evaluates fully before ||, but the parentheses on the second part make it
+     * work correctly for the function case. However, if the intent is to check both conditions
+     * independently, the variable case should also be parenthesized for clarity and correctness.
+     * FIX: Add parentheses: if ((entity->type == ... && datatype_is_struct_or_union(...)) || (...))
+     */
     if (entity->type == RESOLVER_ENTITY_TYPE_VARIABLE && datatype_is_struct_or_union(&entity->var_data.dtype) ||
         (entity->type == RESOLVER_ENTITY_TYPE_FUNCTION && datatype_is_struct_or_union(&entity->dtype)))
     {

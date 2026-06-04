@@ -107,6 +107,11 @@ static struct history *history_down(struct history *history, int flags)
 
 struct parser_history_switch parser_new_switch_statement(struct history *history)
 {
+    /* BUG: sizeof(&history->_switch) returns the size of a POINTER (4 or 8 bytes), not
+     * the size of the struct parser_history_switch. This means memset only zeroes the
+     * first pointer-width bytes of the struct instead of the entire struct.
+     * FIX: Change to: memset(&history->_switch, 0, sizeof(history->_switch));
+     */
     memset(&history->_switch, 0, sizeof(&history->_switch));
     history->_switch.case_data = calloc(1, sizeof(struct history_cases));
     history->_switch.case_data->cases = vector_create(sizeof(struct parsed_switch_case));
@@ -604,6 +609,12 @@ static bool is_keyword_variable_modifier(const char *val)
            S_EQ(val, "static") ||
            S_EQ(val, "const") ||
            S_EQ(val, "extern") ||
+           /* BUG: Mismatch with lexer. The lexer (lexer.c) registers the keyword as
+            * "__ignore_typecheck" (no trailing underscores), but this checks for
+            * "__ignore_typecheck__" (with trailing underscores). This modifier will never
+            * be matched because the token value won't equal this string.
+            * FIX: Change to "__ignore_typecheck" to match the lexer, or update the lexer to use "__ignore_typecheck__".
+            */
            S_EQ(val, "__ignore_typecheck__");
 }
 
@@ -767,6 +778,10 @@ void parser_datatype_init_type_and_size_for_primitive(struct token *datatype_tok
     }
     else if (S_EQ(datatype_token->sval, "double"))
     {
+        /* BUG: Should be "datatype_out->type = DATA_TYPE_DOUBLE" but instead assigns to
+         * datatype_out->size twice. The type field is never set for double, leaving it as 0.
+         * FIX: Change the first line to: datatype_out->type = DATA_TYPE_DOUBLE;
+         */
         datatype_out->size = DATA_TYPE_DOUBLE;
         datatype_out->size = DATA_SIZE_DWORD;
     }

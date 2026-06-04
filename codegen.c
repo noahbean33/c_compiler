@@ -114,6 +114,11 @@ void codegen_response_acknowledge(struct response *response_in)
     }
 }
 
+/* BUG: Uses logical AND (&&) instead of bitwise AND (&) for flag check.
+ * "res->flags && RESPONSE_FLAG_ACKNOWLEDGED" evaluates to true if res->flags is ANY non-zero value,
+ * regardless of whether the ACKNOWLEDGED bit is actually set.
+ * FIX: Change to: return res && (res->flags & RESPONSE_FLAG_ACKNOWLEDGED);
+ */
 bool codegen_response_acknowledged(struct response *res)
 {
     return res && res->flags && RESPONSE_FLAG_ACKNOWLEDGED;
@@ -333,6 +338,10 @@ int asm_push_ins_pop_or_ignore(const char *fmt, int expecting_stack_entity_type,
     return flags;
 }
 
+/* BUG: Missing va_end(args) call. Every va_start must be paired with va_end to properly
+ * clean up the variadic argument list. On some platforms this can cause stack corruption.
+ * FIX: Add "va_end(args);" after the vsprintf call.
+ */
 void codegen_data_section_add(const char *data, ...)
 {
     va_list args;
