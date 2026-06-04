@@ -1,8 +1,19 @@
+/**
+ * @file expressionable.c
+ * @brief Generic expression parser with operator precedence.
+ *
+ * Implements a reusable expression parsing engine that supports operator
+ * precedence, associativity, unary operators, parenthesized expressions,
+ * and ternary operators. Used by both the main parser and the preprocessor
+ * through configurable callback functions.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include <assert.h>
 
 /**
+ * Operator precedence groups ordered from highest to lowest precedence.
  * Format: {operator1, operator2, operator3, NULL}
  */
 

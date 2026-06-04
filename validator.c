@@ -1,3 +1,16 @@
+/**
+ * @file validator.c
+ * @brief Semantic validation pass for the AST.
+ *
+ * Performs semantic analysis on the parsed AST including:
+ * - Checking for duplicate variable/function/struct definitions
+ * - Verifying return statements match function return types
+ * - Validating identifier references exist in scope
+ * - Ensuring function arguments are well-formed
+ *
+ * This pass runs after parsing and before code generation.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 

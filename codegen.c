@@ -1,3 +1,13 @@
+/**
+ * @file codegen.c
+ * @brief x86 NASM assembly code generator.
+ *
+ * Translates the validated AST into 32-bit x86 NASM assembly. Handles
+ * expression evaluation, function calls, control flow (if/else, while, for,
+ * switch), struct/union access, pointer arithmetic, array indexing, and
+ * stack frame management. Outputs assembly in Intel syntax targeting ELF32.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include <stdarg.h>

@@ -1,3 +1,14 @@
+/**
+ * @file vector.c
+ * @brief Generic dynamic array (vector) implementation.
+ *
+ * Implements a contiguous, growable array that stores elements by value.
+ * Supports O(1) push/pop at the end, O(n) insertion/removal at arbitrary
+ * positions, bidirectional peek iteration, state save/restore for
+ * backtracking, and deep cloning. Used as the fundamental collection
+ * type throughout the compiler for tokens, nodes, symbols, and more.
+ */
+
 #include "vector.h"
 #include <memory.h>
 #include <stdlib.h>
@@ -5,6 +16,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+/** @brief Returns true if the index is valid for element access (0 <= index < rindex). */
 static bool vector_in_bounds_for_at(struct vector *vector, int index)
 {
     return (index >= 0 && index < vector->rindex);

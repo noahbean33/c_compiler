@@ -1,34 +1,50 @@
+/**
+ * @file node.c
+ * @brief AST node creation and management.
+ *
+ * Implements factory functions for creating all AST node types (expressions,
+ * statements, functions, variables, structs, unions, etc.) and provides
+ * utilities for querying and manipulating nodes on the node stack.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include <assert.h>
 
+/* Global node vectors used during parsing */
 struct vector *node_vector = NULL;
 struct vector *node_vector_root = NULL;
 
+/* Tracks the current body and function context during parsing */
 struct node *parser_current_body = NULL;
 struct node *parser_current_function = NULL;
 
+/** @brief Sets the global node vectors used during parsing. */
 void node_set_vector(struct vector *vec, struct vector *root_vec)
 {
     node_vector = vec;
     node_vector_root = root_vec;
 }
 
+/** @brief Pushes a node pointer onto the current node stack. */
 void node_push(struct node *node)
 {
     vector_push(node_vector, &node);
 }
 
+/** @brief Returns the top node without popping, or NULL if empty. */
 struct node *node_peek_or_null()
 {
     return vector_back_ptr_or_null(node_vector);
 }
 
+/** @brief Returns the top node without popping. Asserts non-empty. */
 struct node *node_peek()
 {
     return *(struct node **)(vector_back(node_vector));
 }
 
+/** @brief Pops and returns the top node; also removes from root vector if it's the same. */
 struct node *node_pop()
 {
     struct node *last_node = vector_back_ptr(node_vector);
@@ -44,11 +60,13 @@ struct node *node_pop()
     return last_node;
 }
 
+/** @brief Returns true if the node type can appear in an expression context. */
 bool node_is_expressionable(struct node *node)
 {
     return node->type == NODE_TYPE_EXPRESSION || node->type == NODE_TYPE_EXPRESSION_PARENTHESES || node->type == NODE_TYPE_UNARY || node->type == NODE_TYPE_IDENTIFIER || node->type == NODE_TYPE_NUMBER || node->type == NODE_TYPE_STRING;
 }
 
+/** @brief Returns the top node if it's expressionable, otherwise NULL. */
 struct node *node_peek_expressionable_or_null()
 {
     struct node *last_node = node_peek_or_null();
@@ -93,6 +111,7 @@ void make_break_node()
     node_create(&(struct node){.type = NODE_TYPE_STATEMENT_BREAK});
 }
 
+/** @brief Creates a binary expression node with left operand, right operand, and operator. */
 void make_exp_node(struct node *left_node, struct node *right_node, const char *op)
 {
     assert(left_node);
@@ -183,6 +202,7 @@ void make_unary_node(const char* op, struct node* operand_node, int flags)
     node_create(&(struct node){.type=NODE_TYPE_UNARY,.unary.op=op, .unary.operand=operand_node, .unary.flags=flags});
 }
 
+/** @brief Returns the node stored in a symbol, or NULL if not a NODE-type symbol. */
 struct node *node_from_sym(struct symbol *sym)
 {
     if (sym->type != SYMBOL_TYPE_NODE)
@@ -193,6 +213,7 @@ struct node *node_from_sym(struct symbol *sym)
     return sym->data;
 }
 
+/** @brief Looks up a node by name in the symbol table. */
 struct node *node_from_symbol(struct compile_process *current_process, const char *name)
 {
     struct symbol *sym = symresolver_get_symbol(current_process, name);
@@ -203,6 +224,7 @@ struct node *node_from_symbol(struct compile_process *current_process, const cha
     return node_from_sym(sym);
 }
 
+/** @brief Retrieves a struct node by name from the symbol table. */
 struct node *struct_node_for_name(struct compile_process *current_process, const char *name)
 {
     struct node *node = node_from_symbol(current_process, name);
@@ -215,6 +237,7 @@ struct node *struct_node_for_name(struct compile_process *current_process, const
     return node;
 }
 
+/** @brief Retrieves a union node by name from the symbol table. */
 struct node *union_node_for_name(struct compile_process *current_process, const char *name)
 {
     struct node *node = node_from_symbol(current_process, name);
@@ -227,6 +250,10 @@ struct node *union_node_for_name(struct compile_process *current_process, const 
     return node;
 }
 
+/**
+ * @brief Allocates a new node, copies the provided template, binds it to the
+ * current function/body context, and pushes it onto the node stack.
+ */
 struct node *node_create(struct node *_node)
 {
     struct node *node = malloc(sizeof(struct node));
@@ -237,11 +264,13 @@ struct node *node_create(struct node *_node)
     return node;
 }
 
+/** @brief Returns true if the node is a struct or union definition. */
 bool node_is_struct_or_union(struct node* node)
 {
     return node->type == NODE_TYPE_STRUCT || node->type == NODE_TYPE_UNION;
 }
 
+/** @brief Returns true if the node is a variable whose type is a struct or union. */
 bool node_is_struct_or_union_variable(struct node *node)
 {
     if (node->type != NODE_TYPE_VARIABLE)
@@ -252,6 +281,7 @@ bool node_is_struct_or_union_variable(struct node *node)
     return datatype_is_struct_or_union(&node->var.type);
 }
 
+/** @brief Extracts the variable node from a variable, struct, or union node. */
 struct node *variable_node(struct node *node)
 {
 
@@ -274,12 +304,14 @@ struct node *variable_node(struct node *node)
     return var_node;
 }
 
+/** @brief Returns true if the variable node has a primitive datatype. */
 bool variable_node_is_primitive(struct node *node)
 {
     assert(node->type == NODE_TYPE_VARIABLE);
     return datatype_is_primitive(&node->var.type);
 }
 
+/** @brief Returns the variable node, or the node itself if it's a variable list. */
 struct node *variable_node_or_list(struct node *node)
 {
     if (node->type == NODE_TYPE_VARIABLE_LIST)
@@ -290,43 +322,51 @@ struct node *variable_node_or_list(struct node *node)
     return variable_node(node);
 }
 
+/** @brief Returns the stack space added by function arguments (default 8 bytes for EBP+EIP). */
 size_t function_node_argument_stack_addition(struct node *node)
 {
     assert(node->type == NODE_TYPE_FUNCTION);
     return node->func.args.stack_addition;
 }
 
+/** @brief Returns the total stack size allocated for the function's local variables. */
 size_t function_node_stack_size(struct node* node)
 {
     assert(node->type == NODE_TYPE_FUNCTION);
     return node->func.stack_size;
 }
 
+/** @brief Returns true if the function node is a prototype (no body). */
 bool function_node_is_prototype(struct node* node)
 {
     return node->func.body_n == NULL;
 }
 
+/** @brief Returns the vector of argument nodes for a function. */
 struct vector* function_node_argument_vec(struct node* node)
 {
     assert(node->type == NODE_TYPE_FUNCTION);
     return node->func.args.vector;
 }
+/** @brief Returns true if the node is an expression or parenthesized expression. */
 bool node_is_expression_or_parentheses(struct node *node)
 {
     return node->type == NODE_TYPE_EXPRESSION_PARENTHESES || node->type == NODE_TYPE_EXPRESSION;
 }
 
+/** @brief Returns true if the node represents a value (expression, identifier, number, etc.). */
 bool node_is_value_type(struct node *node)
 {
     return node_is_expression_or_parentheses(node) || node->type == NODE_TYPE_IDENTIFIER || node->type == NODE_TYPE_NUMBER || node->type == NODE_TYPE_UNARY || node->type == NODE_TYPE_TENARY || node->type == NODE_TYPE_STRING;
 }
 
+/** @brief Returns true if the node is an expression with the given operator. */
 bool node_is_expression(struct node *node, const char *op)
 {
     return node->type == NODE_TYPE_EXPRESSION && S_EQ(node->exp.op, op);
 }
 
+/** @brief Returns true if the node is an assignment expression (=, +=, -=, etc.). */
 bool is_node_assignment(struct node *node)
 {
     if (node->type != NODE_TYPE_EXPRESSION)
@@ -341,6 +381,7 @@ bool is_node_assignment(struct node *node)
            S_EQ(node->exp.op, "<<=");
 }
 
+/** @brief Returns true if the node pointer is non-NULL and not a blank node. */
 bool node_valid(struct node* node)
 {
     return node && node->type != NODE_TYPE_BLANK;

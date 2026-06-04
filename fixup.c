@@ -1,7 +1,18 @@
+/**
+ * @file fixup.c
+ * @brief Fixup system for deferred symbol resolution.
+ *
+ * Implements a forward-reference resolution mechanism. When the compiler
+ * encounters a reference to a symbol not yet defined, it registers a fixup.
+ * After all definitions are processed, fixups are resolved in a second pass.
+ * This enables support for forward declarations and out-of-order definitions.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include <stdlib.h>
 
+/** @brief Creates a new fixup system with an empty fixup vector. */
 struct fixup_system* fixup_sys_new()
 {
     struct fixup_system* system = calloc(1, sizeof(struct fixup_system));

@@ -1,7 +1,21 @@
+/**
+ * @file stdarg.c
+ * @brief Native implementation of variadic argument functions (va_start, va_arg, va_end).
+ *
+ * Provides the code generation callbacks for variadic argument handling.
+ * When the compiler encounters calls to va_start, va_arg, or va_end, these
+ * native functions emit inline assembly directly rather than generating
+ * a standard function call. This implements the x86 calling convention for
+ * accessing arguments pushed beyond the last named parameter.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 
-// va_start(list, final_argument_in_function)
+/**
+ * @brief Native implementation of va_start(list, final_argument_in_function).
+ * Stores the address of the last named stack argument into the va_list variable.
+ */
 void native_va_start(struct generator* generator, struct native_function* func, struct vector* arguments)
 {
     struct compile_process* compiler = generator->compiler;
@@ -33,7 +47,10 @@ void native_va_start(struct generator* generator, struct native_function* func, 
     generator->ret(&void_datatype, "0");
 }
 
-// __builtin_va_arg(list, 4);
+/**
+ * @brief Native implementation of __builtin_va_arg(list, size).
+ * Advances the va_list pointer by 'size' bytes and returns the value at that location.
+ */
 void native__builtin_va_arg(struct generator* generator, struct native_function* func, struct vector* arguments)
 {
     struct compile_process* compiler = generator->compiler;
@@ -62,6 +79,7 @@ void native__builtin_va_arg(struct generator* generator, struct native_function*
     generator->asm_push("; native__builtin_va_arg end");
 }
 
+/** @brief Native implementation of va_end. No-op that returns void. */
 void native_va_end(struct generator* generator, struct native_function* func, struct vector* arguments)
 {
     struct datatype void_datatype;
@@ -69,6 +87,10 @@ void native_va_end(struct generator* generator, struct native_function* func, st
     generator->ret(&void_datatype, "0");
 }
 
+/**
+ * @brief Registers the variadic argument native functions when stdarg-internal.h is included.
+ * Registers va_start, __builtin_va_arg, and va_end as compiler-intrinsic functions.
+ */
 void preprocessor_stdarg_internal_include(struct preprocessor* preprocessor, struct preprocessor_included_file* file)
 {
     native_create_function(preprocessor->compiler, "va_start", 

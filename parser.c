@@ -1,3 +1,14 @@
+/**
+ * @file parser.c
+ * @brief Recursive descent parser for C source code.
+ *
+ * Consumes the preprocessed token stream and constructs an abstract syntax
+ * tree (AST). Handles all C language constructs including variable declarations,
+ * function definitions, struct/union definitions, control flow statements
+ * (if, while, for, do-while, switch), expressions, type casts, and typedef.
+ * Uses a fixup system to handle forward declarations.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include <assert.h>

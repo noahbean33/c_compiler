@@ -1,3 +1,12 @@
+/**
+ * @file lexer.c
+ * @brief Lexical analyzer (tokenizer) for the C compiler.
+ *
+ * Converts a stream of characters from the source file into a sequence of tokens.
+ * Handles identifiers, keywords, numbers (decimal, hex, binary), strings,
+ * operators, symbols, comments, and special characters (escape sequences).
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include "helpers/buffer.h"
@@ -5,6 +14,10 @@
 #include <assert.h>
 #include <ctype.h>
 
+/**
+ * Macro to read characters into a buffer while a condition holds.
+ * Peeks at the next character and writes it if the expression is true.
+ */
 #define LEX_GETC_IF(buffer, c, exp)     \
     for (c = peekc(); exp; c = peekc()) \
     {                                   \

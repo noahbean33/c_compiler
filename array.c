@@ -1,7 +1,17 @@
+/**
+ * @file array.c
+ * @brief Array bracket management and size calculation utilities.
+ *
+ * Handles the creation and manipulation of array bracket structures used to
+ * represent multi-dimensional array declarations. Provides functions to
+ * calculate total array sizes and individual dimension multipliers.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include <assert.h>
 
+/** @brief Allocates a new array_brackets structure with an empty bracket vector. */
 struct array_brackets* array_brackets_new()
 {
     struct array_brackets* brackets = calloc(1, sizeof(struct array_brackets));
@@ -9,22 +19,29 @@ struct array_brackets* array_brackets_new()
     return brackets;
 }
 
+/** @brief Frees an array_brackets structure. */
 void array_brackets_free(struct array_brackets* brackets)
 {
     free(brackets);
 }
 
+/** @brief Adds a bracket node (e.g., [50]) to the array brackets list. */
 void array_brackets_add(struct array_brackets* brackets, struct node* bracket_node)
 {
     assert(bracket_node->type == NODE_TYPE_BRACKET);
     vector_push(brackets->n_brackets, &bracket_node);
 }
 
+/** @brief Returns the underlying vector of bracket nodes. */
 struct vector* array_brackets_node_vector(struct array_brackets* brackets)
 {
     return brackets->n_brackets;
 }
 
+/**
+ * @brief Calculates the total array size starting from a given bracket index.
+ * Multiplies the base datatype size by each bracket dimension from index onward.
+ */
 size_t array_brackets_calculate_size_from_index(struct datatype* dtype, struct array_brackets* brackets, int index)
 {
     struct vector* array_vec = array_brackets_node_vector(brackets);
@@ -54,16 +71,19 @@ size_t array_brackets_calculate_size_from_index(struct datatype* dtype, struct a
     return size;
 }
 
+/** @brief Returns the number of bracket dimensions in the array datatype. */
 size_t array_brackets_count(struct datatype* dtype)
 {
     return vector_count(dtype->array.brackets->n_brackets);
 }
 
+/** @brief Calculates the total size of an array (all dimensions multiplied by element size). */
 size_t array_brackets_calculate_size(struct datatype* dtype, struct array_brackets* brackets)
 {
     return array_brackets_calculate_size_from_index(dtype, brackets, 0);
 }
 
+/** @brief Returns the total number of index dimensions for an array datatype. */
 int array_total_indexes(struct datatype* dtype)
 {
     assert(dtype->flags & DATATYPE_FLAG_IS_ARRAY);

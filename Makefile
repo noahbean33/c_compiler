@@ -92,6 +92,9 @@ all: ${OBJECTS}
 ./build/helpers/vector.o: ./helpers/vector.c
 	gcc ./helpers/vector.c ${INCLUDES} -o ./build/helpers/vector.o -g -c
 
+test: all
+	cd tests && python3 test_compiler ../mycc --chapter $(CHAPTER)
+
 clean:
 	rm ./main
 	rm -rf ${OBJECTS}

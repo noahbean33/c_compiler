@@ -1,7 +1,19 @@
+/**
+ * @file rdefault.c
+ * @brief Default resolver implementation for x86 code generation.
+ *
+ * Provides the default callbacks for the resolver system, including entity
+ * creation for variables, functions, and array brackets. Handles address
+ * calculation for both stack-local (EBP-relative) and global variables,
+ * and implements entity merging for struct/array member access chains.
+ */
+
 #include "compiler.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <memory.h>
+
+/** @brief Returns the private entity data cast to the default entity data type. */
 struct resolver_default_entity_data* resolver_default_entity_private(struct resolver_entity* entity)
 {
     return entity->private;

@@ -1,12 +1,25 @@
+/**
+ * @file helper.c
+ * @brief Compiler helper utilities and operator classification.
+ *
+ * Contains a variety of helper functions used across the compiler including:
+ * variable size calculations, struct offset computation, alignment/padding,
+ * operator classification (access, array, unary, logical), datatype
+ * construction for literals, and compile-time arithmetic evaluation.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include <assert.h>
+
+/** @brief Returns the total size in bytes of a variable node's datatype. */
 size_t variable_size(struct node *var_node)
 {
     assert(var_node->type == NODE_TYPE_VARIABLE);
     return datatype_size(&var_node->var.type);
 }
 
+/** @brief Returns whichever of the two datatypes is a pointer, or NULL if neither is. */
 struct datatype* datatype_thats_a_pointer(struct datatype* d1, struct datatype* d2)
 {
     if (d1->flags & DATATYPE_FLAG_IS_POINTER)
@@ -22,16 +35,19 @@ struct datatype* datatype_thats_a_pointer(struct datatype* d1, struct datatype* 
     return NULL;
 }
 
+/** @brief Returns true if the operator is a logical operator (&& or ||). */
 bool is_logical_operator(const char* op)
 {
     return S_EQ(op, "&&") || S_EQ(op, "||");
 }
 
+/** @brief Returns true if the node is an expression using a logical operator. */
 bool is_logical_node(struct node* node)
 {
     return node->type == NODE_TYPE_EXPRESSION && is_logical_operator(node->exp.op);
 }
 
+/** @brief Creates a copy of the datatype with pointer depth reduced by the given amount. */
 struct datatype* datatype_pointer_reduce(struct datatype* datatype, int by)
 {
     struct datatype* new_datatype = calloc(1, sizeof(struct datatype));
@@ -46,6 +62,7 @@ struct datatype* datatype_pointer_reduce(struct datatype* datatype, int by)
 }
 
 
+/** @brief Calculates the total size of all variables in a variable list node. */
 size_t variable_size_for_list(struct node *var_list_node)
 {
     assert(var_list_node->type == NODE_TYPE_VARIABLE_LIST);
@@ -61,6 +78,7 @@ size_t variable_size_for_list(struct node *var_list_node)
     return size;
 }
 
+/** @brief Returns the body node of a struct/union variable's type definition. */
 struct node *variable_struct_or_union_body_node(struct node *node)
 {
     if (!node_is_struct_or_union_variable(node))
@@ -81,6 +99,7 @@ struct node *variable_struct_or_union_body_node(struct node *node)
     return NULL;
 }
 
+/** @brief Calculates the padding needed to align 'val' to a multiple of 'to'. */
 int padding(int val, int to)
 {
     if (to <= 0)
@@ -96,6 +115,7 @@ int padding(int val, int to)
     return to - (val % to) % to;
 }
 
+/** @brief Rounds 'val' up to the next multiple of 'to'. */
 int align_value(int val, int to)
 {
     if (val % to)
@@ -105,6 +125,7 @@ int align_value(int val, int to)
     return val;
 }
 
+/** @brief Aligns a value, treating negative values correctly (aligns toward negative infinity). */
 int align_value_treat_positive(int val, int to)
 {
     assert(to >= 0);
@@ -115,6 +136,7 @@ int align_value_treat_positive(int val, int to)
     return align_value(val, to);
 }
 
+/** @brief Computes the total padding bytes across all variable nodes in a vector. */
 int compute_sum_padding(struct vector *vec)
 {
     int padding = 0;
@@ -140,6 +162,7 @@ int compute_sum_padding(struct vector *vec)
     return padding;
 }
 
+/** @brief Computes the multiplier for a given array index dimension (products of inner dimensions). */
 int array_multiplier(struct datatype *dtype, int index, int index_value)
 {
     if (!(dtype->flags & DATATYPE_FLAG_IS_ARRAY))
@@ -162,6 +185,7 @@ int array_multiplier(struct datatype *dtype, int index, int index_value)
     return size_sum;
 }
 
+/** @brief Computes the byte offset for an array access at the given dimension and index value. */
 int array_offset(struct datatype *dtype, int index, int index_value)
 {
     if (!(dtype->flags & DATATYPE_FLAG_IS_ARRAY) ||
@@ -174,6 +198,7 @@ int array_offset(struct datatype *dtype, int index, int index_value)
 }
 
 
+/** @brief Returns the largest variable node within a body node (used for alignment). */
 struct node* body_largest_variable_node(struct node* body_node)
 {
     if (!body_node)
@@ -189,11 +214,16 @@ struct node* body_largest_variable_node(struct node* body_node)
     return body_node->body.largest_var_node;
 }
 
+/** @brief Returns the largest variable node within a struct/union variable's body. */
 struct node* variable_struct_or_union_largest_variable_node(struct node* var_node)
 {
     return body_largest_variable_node(variable_struct_or_union_body_node(var_node));
 }
 
+/**
+ * @brief Calculates the byte offset of a member variable within a struct or union.
+ * Walks through struct members, accumulating sizes and alignment padding.
+ */
 int struct_offset(struct compile_process* compile_proc, const char* struct_name, const char* var_name, struct node** var_node_out, int last_pos, int flags)
 {
     struct symbol* struct_sym = symresolver_get_symbol(compile_proc, struct_name);
@@ -243,10 +273,12 @@ int struct_offset(struct compile_process* compile_proc, const char* struct_name,
     return position;
 }
 
+/** @brief Returns true if the operator is a struct/union member access (. or ->). */
 bool is_access_operator(const char* op)
 {
     return S_EQ(op, "->") || S_EQ(op, ".");
 }
+/** @brief Returns true if the node is a member access expression. */
 bool is_access_node(struct node* node)
 {
     return node->type == NODE_TYPE_EXPRESSION && is_access_operator(node->exp.op);
@@ -257,51 +289,61 @@ bool is_access_node_with_op(struct node* node, const char* op)
     return is_access_node(node) && S_EQ(node->exp.op, op);
 }
 
+/** @brief Returns true if the operator is an array subscript ([]). */
 bool is_array_operator(const char* op)
 {
     return S_EQ(op, "[]");
 }
 
+/** @brief Returns true if the node is an array subscript expression. */
 bool is_array_node(struct node* node)
 {
     return node->type == NODE_TYPE_EXPRESSION && is_array_operator(node->exp.op);
 }
 
+/** @brief Returns true if the operator is a function call parenthesis. */
 bool is_parentheses_operator(const char* op)
 {
     return S_EQ(op, "()");
 }
 
+/** @brief Returns true if the node is a function call expression. */
 bool is_parentheses_node(struct node* node)
 {
     return node->type == NODE_TYPE_EXPRESSION && is_parentheses_operator(node->exp.op);
 }
 
+/** @brief Returns true if the operator is the argument separator (,). */
 bool is_argument_operator(const char* op)
 {
     return S_EQ(op, ",");
 }
 
+/** @brief Returns true if the node is an argument separator expression. */
 bool is_argument_node(struct node* node)
 {
     return node->type == NODE_TYPE_EXPRESSION && is_argument_operator(node->exp.op);
 }
 
+/** @brief Returns true if the operator can be used as a unary operator (-, !, ~, *, &, ++, --). */
 bool is_unary_operator(const char* op)
 {
     return S_EQ(op, "-") || S_EQ(op, "!") || S_EQ(op, "~") || S_EQ(op, "*") || S_EQ(op, "&") || S_EQ(op, "++") || S_EQ(op, "--");
 }
 
+/** @brief Returns true if the operator is pointer indirection (*). */
 bool op_is_indirection(const char* op)
 {
     return S_EQ(op, "*");
 }
 
+/** @brief Returns true if the operator is address-of (&). */
 bool op_is_address(const char* op)
 {
     return S_EQ(op, "&");
 }
 
+/** @brief Returns true if the specified file can be opened for reading. */
 bool file_exists(const char* filename)
 {
     FILE* f = fopen(filename, "r");
@@ -314,6 +356,7 @@ bool file_exists(const char* filename)
     return true;
 }
 
+/** @brief Returns a default integer datatype for numeric literal values. */
 struct datatype datatype_for_numeric()
 {
     struct datatype dtype = {};
@@ -324,6 +367,7 @@ struct datatype datatype_for_numeric()
     return dtype;
 }
 
+/** @brief Returns a char* datatype for string literal values. */
 struct datatype datatype_for_string()
 {
     struct datatype dtype = {};
@@ -335,22 +379,26 @@ struct datatype datatype_for_string()
     return dtype;
 }
 
+/** @brief Returns true if the operator is an opening parenthesis. */
 bool is_parentheses(const char* op)
 {
     return (S_EQ(op, "("));
 }
 
+/** @brief Returns true if the operator is a postfix unary (++ or -- on the left side). */
 bool is_left_operanded_unary_operator(const char* op)
 {
     return S_EQ(op, "++") || S_EQ(op, "--");
 }
 
+/** @brief Returns true if the token can follow a unary operand (access, array, or parentheses). */
 bool unary_operand_compatible(struct token* token)
 {
     return is_access_operator(token->sval) ||
             is_array_operator(token->sval) ||
             is_parentheses(token->sval);
 }
+/** @brief Decrements the pointer depth of a datatype, clearing the pointer flag if depth reaches 0. */
 void datatype_decrement_pointer(struct datatype* dtype)
 {
     dtype->pointer_depth--;
@@ -361,6 +409,12 @@ void datatype_decrement_pointer(struct datatype* dtype)
 
 }
 
+/**
+ * @brief Performs compile-time arithmetic evaluation of binary operators.
+ * Supports arithmetic (+, -, *, /), comparison (==, !=, <, >, <=, >=),
+ * bitwise shifts (<<, >>), and logical operators (&&, ||).
+ * Sets *success to false if the operator is unrecognized.
+ */
 long arithmetic(struct compile_process* compiler, long left_operand, long right_operand, const char* op, bool* success)
 {
     *success = true;

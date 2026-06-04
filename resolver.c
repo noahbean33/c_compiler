@@ -1,7 +1,21 @@
+/**
+ * @file resolver.c
+ * @brief Expression and identifier resolution engine.
+ *
+ * Implements the resolver which follows expression trees to determine the
+ * final memory location, type, and offset of referenced entities. Handles
+ * variable lookups, struct/union member access (. and ->), array bracket
+ * indexing, function calls, pointer indirection, address-of operations,
+ * and type casts. Produces a resolver_result chain that the code generator
+ * uses to emit correct memory access instructions.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include <stdlib.h>
 #include <assert.h>
+
+/* Forward declarations for mutually recursive resolution functions */
 void resolver_follow_part(struct resolver_process *resolver, struct node *node, struct resolver_result *result);
 struct resolver_entity *resolver_follow_exp(struct resolver_process *resolver, struct node *node, struct resolver_result *result);
 struct resolver_result *resolver_follow(struct resolver_process *resolver, struct node *node);

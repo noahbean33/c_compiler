@@ -1,3 +1,14 @@
+/**
+ * @file compiler.h
+ * @brief Master header for the Peach C Compiler.
+ *
+ * Contains all type definitions, enumerations, structure declarations, and
+ * function prototypes used throughout the compiler. This includes definitions
+ * for the lexer, parser, AST nodes, datatype system, code generator, resolver,
+ * preprocessor, scope management, symbol resolver, fixup system, and the
+ * generic expressionable framework.
+ */
+
 #ifndef PEACHCOMPILER_H
 #define PEACHCOMPILER_H
 
@@ -7,8 +18,10 @@
 #include <linux/limits.h>
 #include <assert.h>
 
+/** @brief Triggers an assertion failure with a descriptive message. */
 #define FAIL_ERR(message) assert(0 == 1 && message)
 
+/** @brief Safe string equality comparison that handles NULL pointers. */
 #define S_EQ(str, str2) \
     (str && str2 && (strcmp(str, str2) == 0))
 

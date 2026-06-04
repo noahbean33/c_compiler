@@ -1,0 +1,117 @@
+#!/usr/bin/env bash
+# mycc - Wrapper script that adapts our compiler's CLI to the interface
+# expected by the "Writing a C Compiler" test suite.
+#
+# Test framework calls:  ./mycc [--lex|--parse|--validate|--tacky|--codegen] [-c] [-lm] <source.c>
+# Our compiler expects:  ./main <input_file> <output_file> [exec|object]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+COMPILER="$SCRIPT_DIR/main"
+
+# --- Parse arguments ---
+STAGE=""
+COMPILE_ONLY=false
+LINK_MATH=false
+SOURCE_FILE=""
+EXTRA_ARGS=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --lex|--parse|--validate|--tacky|--codegen)
+            STAGE="$1"
+            shift
+            ;;
+        -c)
+            COMPILE_ONLY=true
+            shift
+            ;;
+        -lm)
+            LINK_MATH=true
+            shift
+            ;;
+        -S)
+            # Produce assembly only — used by --keep-asm-on-failure
+            STAGE="--codegen"
+            shift
+            ;;
+        -*)
+            # Pass through unknown flags (e.g. optimization flags)
+            EXTRA_ARGS+=("$1")
+            shift
+            ;;
+        *)
+            # Positional argument — treat as source file
+            SOURCE_FILE="$1"
+            shift
+            ;;
+    esac
+done
+
+if [[ -z "$SOURCE_FILE" ]]; then
+    echo "mycc: error: no source file specified" >&2
+    exit 1
+fi
+
+if [[ ! -f "$SOURCE_FILE" ]]; then
+    echo "mycc: error: source file not found: $SOURCE_FILE" >&2
+    exit 1
+fi
+
+# --- Derive output paths from source file ---
+# /path/to/foo.c -> /path/to/foo (executable) or /path/to/foo.o (object)
+SOURCE_DIR="$(dirname "$SOURCE_FILE")"
+BASENAME="$(basename "$SOURCE_FILE" .c)"
+EXE_PATH="$SOURCE_DIR/$BASENAME"
+OBJ_PATH="$SOURCE_DIR/$BASENAME.o"
+ASM_PATH="$SOURCE_DIR/$BASENAME.s"
+
+# --- Handle stage-only flags ---
+# For intermediate stages (--lex, --parse, --validate, --tacky), we only need
+# to verify the compiler can process the file without errors. We don't produce
+# output files. --codegen produces assembly only.
+if [[ -n "$STAGE" ]]; then
+    case "$STAGE" in
+        --lex|--parse|--validate|--tacky)
+            # Run the compiler; it will attempt full compilation.
+            # We just care about the exit code (0 = success, non-zero = error).
+            # Use a temp output to avoid polluting the test directory.
+            TEMP_OUT=$(mktemp)
+            trap "rm -f '$TEMP_OUT' '${TEMP_OUT}.o'" EXIT
+
+            "$COMPILER" "$SOURCE_FILE" "$TEMP_OUT" exec
+            EXIT_CODE=$?
+
+            # Clean up any produced files — stage tests expect no output
+            rm -f "$TEMP_OUT" "${TEMP_OUT}.o"
+            exit $EXIT_CODE
+            ;;
+        --codegen)
+            # Produce assembly output only (no assemble/link)
+            # Our compiler writes assembly to the output path, then
+            # assembles+links. We want just the assembly.
+            # Run compiler with output path = asm destination, but
+            # we'll need to stop before the nasm step.
+            # For now, run full compile and just keep the .s if present.
+            "$COMPILER" "$SOURCE_FILE" "$ASM_PATH" exec
+            EXIT_CODE=$?
+            # Remove executable/object artifacts, keep .s
+            rm -f "$EXE_PATH" "$OBJ_PATH"
+            exit $EXIT_CODE
+            ;;
+    esac
+fi
+
+# --- Full compilation ---
+if $COMPILE_ONLY; then
+    # -c: compile to object file only (no linking)
+    "$COMPILER" "$SOURCE_FILE" "$EXE_PATH" object
+    EXIT_CODE=$?
+    exit $EXIT_CODE
+else
+    # Full compile + assemble + link to executable
+    "$COMPILER" "$SOURCE_FILE" "$EXE_PATH" exec
+    EXIT_CODE=$?
+    exit $EXIT_CODE
+fi

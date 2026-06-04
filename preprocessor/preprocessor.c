@@ -1,3 +1,19 @@
+/**
+ * @file preprocessor.c
+ * @brief C preprocessor implementation.
+ *
+ * Handles all preprocessor directives including:
+ * - #define / #undef: Macro definition and removal (object-like and function-like)
+ * - #if / #ifdef / #ifndef / #endif: Conditional compilation
+ * - #include: File inclusion (with static include support)
+ * - #warning / #error: Compile-time diagnostics
+ * - typedef: Type alias expansion
+ *
+ * Also implements a preprocessor expression evaluator for #if conditions,
+ * using the generic expressionable framework with preprocessor-specific
+ * node types and callbacks.
+ */
+
 #include "compiler.h"
 #include "helpers/vector.h"
 #include "helpers/buffer.h"
@@ -6,7 +22,6 @@
 enum
 {
     TYPEDEF_TYPE_STANDARD,
-    // A structure typedef is basically "typedef struct ABC { int x; } AAA;"
     TYPEDEF_TYPE_STRUCTURE_TYPEDEF
 };
 

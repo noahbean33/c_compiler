@@ -1,3 +1,13 @@
+/**
+ * @file vector.h
+ * @brief Generic dynamic array (vector) interface.
+ *
+ * Provides a type-agnostic resizable array implementation used as the primary
+ * collection throughout the compiler. Supports push/pop, random access, peek
+ * iteration (with forward and reverse modes), state save/restore, insertion,
+ * and cloning. Elements are stored contiguously by value.
+ */
+
 #ifndef VECTOR_H
 #define VECTOR_H
 
@@ -7,8 +17,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-// We want at least 20 vector element spaces in reserve before having
-// to reallocate memory again
+/* Minimum number of element slots to allocate ahead to reduce reallocation frequency */
 #define VECTOR_ELEMENT_INCREMENT 20
 
 enum
