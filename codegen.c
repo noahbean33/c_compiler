@@ -352,6 +352,11 @@ void codegen_data_section_add(const char *data, ...)
 }
 
 
+/* BUG: %lld format specifier expects long long, but stack_size is size_t (typically
+ * 4 bytes on 32-bit). This format mismatch is undefined behavior for variadic functions.
+ * The same issue exists in codegen_stack_sub_with_name and codegen_stack_add_with_name.
+ * FIX: Use %zu for size_t, or cast: (long long)stack_size.
+ */
 void codegen_stack_add_no_compile_time_stack_frame_restore(size_t stack_size)
 {
     if (stack_size != 0)
@@ -1197,6 +1202,11 @@ const char *codegen_byte_word_or_dword_or_ddword(size_t size, const char **reg_t
         type = "dword";
         new_register = codegen_sub_register(*reg_to_use, DATA_SIZE_DWORD);
     }
+    /* BUG: codegen_sub_register has no case for DATA_SIZE_DDWORD and will return NULL.
+     * This causes *reg_to_use to be set to NULL, leading to crashes or garbage output.
+     * FIX: Either add a DATA_SIZE_DDWORD case to codegen_sub_register, or handle
+     * the 8-byte case here without calling codegen_sub_register (e.g. keep the original register).
+     */
     else if (size == DATA_SIZE_DDWORD)
     {
         type = "ddword";
@@ -1208,6 +1218,11 @@ const char *codegen_byte_word_or_dword_or_ddword(size_t size, const char **reg_t
 
 void codegen_generate_assignment_instruction_for_operator(const char *mov_type_keyword, const char *address, const char *reg_to_use, const char *op, bool is_signed)
 {
+    /* BUG: Compares pointer addresses, not string contents. If "ecx" comes from
+     * a different compilation unit or string pooling is disabled, this assert may
+     * incorrectly pass even when reg_to_use equals "ecx".
+     * FIX: Change to: assert(!S_EQ(reg_to_use, "ecx"));
+     */
     assert(reg_to_use != "ecx");
 
     if (S_EQ(op, "="))
@@ -1502,6 +1517,11 @@ void codegen_generate_assignment_part(struct node *node, const char *op, struct 
         codegen_generate_entity_access_for_assignment_left_operand(result, root_assignment_entity, node, history);
         asm_push_ins_pop("edx", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE, "result_value");
         asm_push_ins_pop("eax", STACK_FRAME_ELEMENT_TYPE_PUSHED_VALUE, "result_value");
+        /* BUG: Checks result->last_entity->flags (resolver entity flags) instead of
+         * result->last_entity->dtype.flags (datatype flags) for signedness.
+         * DATATYPE_FLAG_IS_SIGNED belongs to the datatype flag namespace, not entity flags.
+         * FIX: Change to: result->last_entity->dtype.flags & DATATYPE_FLAG_IS_SIGNED
+         */
         codegen_generate_assignment_instruction_for_operator(mov_type, "edx", reg_to_use, op, result->last_entity->flags & DATATYPE_FLAG_IS_SIGNED);
     }
 }
@@ -1955,6 +1975,10 @@ void codegen_generate_logical_cmp_and(const char *reg, const char *fail_label)
     asm_push("je %s", fail_label);
 }
 
+/* BUG: Uses jg (jump if greater) which only treats positive values as truthy.
+ * Negative numbers (e.g. -1) will incorrectly evaluate to false in || expressions.
+ * FIX: Change "jg" to "jne" (jump if not equal) so any non-zero value is truthy.
+ */
 void codegen_generate_logical_cmp_or(const char *reg, const char *equal_label)
 {
     asm_push("cmp %s, 0", reg);
