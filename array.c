@@ -19,6 +19,10 @@ struct array_brackets* array_brackets_new()
     return brackets;
 }
 
+/* BUG: Memory leak - brackets->n_brackets (created with vector_create) is never freed.
+ * Only the outer struct is freed, leaking the internal vector and all its contents.
+ * FIX: Call vector_free(brackets->n_brackets) before free(brackets).
+ */
 /** @brief Frees an array_brackets structure. */
 void array_brackets_free(struct array_brackets* brackets)
 {
@@ -63,6 +67,10 @@ size_t array_brackets_calculate_size_from_index(struct datatype* dtype, struct a
     while(array_bracket_node)
     {
         assert(array_bracket_node->bracket.inner->type == NODE_TYPE_NUMBER);
+        /* BUG: Potential integer truncation - llnum is likely long long but is
+         * stored in an int. Large array dimensions could silently overflow.
+         * FIX: Use long long or size_t for 'number' to match the llnum type.
+         */
         int number = array_bracket_node->bracket.inner->llnum;
         size *= number;
         array_bracket_node = vector_peek_ptr(array_vec);

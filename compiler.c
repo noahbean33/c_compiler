@@ -71,8 +71,17 @@ void compiler_warning(struct compile_process* compiler, const char* msg, ...)
  */
 struct compile_process* compile_include_for_include_dir(const char* include_dir, const char* filename, struct compile_process* parent_process)
 {
+    /* BUG: sprintf with no bounds checking - if include_dir + filename exceeds
+     * 511 characters, this overflows the 512-byte stack buffer.
+     * FIX: Use snprintf(tmp_filename, sizeof(tmp_filename), "%s/%s", include_dir, filename);
+     */
     char tmp_filename[512];
     sprintf(tmp_filename, "%s/%s", include_dir, filename);
+    /* BUG: filename is reassigned to point to stack-local tmp_filename.
+     * If compile_process_create stores this pointer without copying the string,
+     * it becomes a dangling pointer once this function returns.
+     * FIX: Use strdup(tmp_filename) or ensure compile_process_create copies the string.
+     */
     if (file_exists(tmp_filename))
     {
         filename = tmp_filename;
@@ -83,6 +92,11 @@ struct compile_process* compile_include_for_include_dir(const char* include_dir,
         return NULL;
     }
 
+    /* BUG: Resource leak on failure paths - if lex_process_create succeeds but
+     * lex() or preprocessor_run() fails, 'process' is leaked (never freed).
+     * Similarly, if lex() succeeds but preprocessor_run() fails, lex_process is leaked.
+     * FIX: Free allocated resources before returning NULL on each failure path.
+     */
     struct lex_process* lex_process = lex_process_create(process, &compiler_lex_functions, NULL);
     if (!lex_process)
     {
